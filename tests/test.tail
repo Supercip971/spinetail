@@ -1,0 +1,31 @@
+@st:begin
+@st:sched
+#name kernel
+#kind scheduler
+#pid 10
+#tick 0
+#group 1
+@st:sched
+#name gui-demo
+#kind scheduler
+#pid 10
+#tick 0
+#group 0
+@st:sched
+#name disk
+#kind scheduler
+#pid 10
+#tick 1
+#group 0
+@st:sched
+#name render
+#kind scheduler
+#pid 10
+#tick 2
+#group 0
+@st:sched
+#name vfs
+#kind scheduler
+#pid 10
+#tick 2
+#group 1

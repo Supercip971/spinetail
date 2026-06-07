@@ -1,0 +1,12 @@
+-xc++
+-std=c++2b
+-Isrc
+-Werror
+-Wextra
+-Wall
+-Wundef
+-Wshadow
+-Wvla
+-Iexternal/imgui
+-Iexternal/imgui/backends
+-DIMGUI_DEFINE_MATH_OPERATORS=1
