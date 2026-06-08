@@ -1,3 +1,4 @@
+#include "imgui.h"
 #include "records.hpp"
 #include "ui.hpp"
 
@@ -16,7 +17,10 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
     Record* selected_record = get_selected_record();
     draw_list->ChannelsSplit(2);
 
-    for (size_t tick = start_tick; tick < start_tick + 21; tick++)
+
+    float window_width = ImGui::GetWindowWidth();
+    int end = ceilf(window_width / rec_width)+5;
+    for (size_t tick = start_tick; tick < start_tick + end; tick++)
     {
         if (!group.contains(tick))
         {
@@ -136,22 +140,36 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
     return 0;
 }
 
-int display_graph(float rec_width)
+int display_graph(float& rec_width)
 {
 
     ImGui::BeginChild("graph", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
 
-    ImGui::TextUnformatted("- Graph -");
     // ImGui::Text("cursor: %f, %f", cursor.x, cursor.y);
 
     auto cursor = ImGui::GetCursorScreenPos();
-    // show size
-    //
     float width = RecordsManager::the().last_tick() * rec_width;
     ImGui::ItemSize(
         ImRect(0, 0, width, ImGui::GetWindowHeight()));
     size_t start_tick = std::max(0.f, ((-cursor.x) / rec_width) - 1);
 
+
+
+
+
+    auto& io = ImGui::GetIO(); // Pick new zoom from mouse wheel
+    if (io.MouseWheel > 0.0f)
+    {
+        rec_width += rec_width *0.02f * io.MouseWheel;
+//        zoom_changed = true;
+    }
+    else if (io.MouseWheel < 0.0f)
+    {
+        rec_width -= rec_width * (0.02f * -io.MouseWheel);
+//        zoom_changed = true;
+    }
+
+    printf("mouse wheel: %f, rec_width: %f\n", io.MouseWheel, rec_width);
     auto& records_by_group = RecordsManager::the().records_by_group;
     for (size_t cpu = 0; cpu < records_by_group.size(); cpu++)
     {
