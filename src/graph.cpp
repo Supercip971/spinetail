@@ -14,12 +14,11 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
     r.Max.x = r.Min.x;
     r.Max.y = 100.f + 200.f * cpu;
 
-    Record* selected_record = get_selected_record();
+    Record *selected_record = get_selected_record();
     draw_list->ChannelsSplit(2);
 
-
     float window_width = ImGui::GetWindowWidth();
-    int end = ceilf(window_width / rec_width)+5;
+    int end = ceilf(window_width / rec_width) + 5;
     for (size_t tick = start_tick; tick < start_tick + end; tick++)
     {
         if (!group.contains(tick))
@@ -105,20 +104,16 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
 
             printf("%s tick=%f\n", record->name.c_str(), record->tick);
 
-
-
             r2.Min.x = (record->tick) * rec_width;
 
-            r2.Max.x = (record->tick +0.1f) * rec_width;
+            r2.Max.x = (record->tick + 0.1f) * rec_width;
 
             ImColor col = try_hash(record->name);
 
             col.Value.w = 1.0f;
 
-
             draw_list->AddRectFilled(r2.Min + cursor, r2.Max + cursor,
                                      col);
-
 
             // clickable rect
 
@@ -140,7 +135,7 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
     return 0;
 }
 
-int display_graph(float& rec_width)
+int display_graph(float &rec_width)
 {
 
     ImGui::BeginChild("graph", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -150,27 +145,33 @@ int display_graph(float& rec_width)
     auto cursor = ImGui::GetCursorScreenPos();
     float width = RecordsManager::the().last_tick() * rec_width;
     ImGui::ItemSize(
-        ImRect(0, 0, width, ImGui::GetWindowHeight()));
+        ImRect(0, 0, width, ImGui::GetWindowHeight() - 16.f));
     size_t start_tick = std::max(0.f, ((-cursor.x) / rec_width) - 1);
 
 
-
-
-
-    auto& io = ImGui::GetIO(); // Pick new zoom from mouse wheel
-    if (io.MouseWheel > 0.0f)
+    // check if it is hovered
+    bool hovered = ImGui::IsWindowHovered();
+    if (hovered)
     {
-        rec_width += rec_width *0.02f * io.MouseWheel;
-//        zoom_changed = true;
-    }
-    else if (io.MouseWheel < 0.0f)
-    {
-        rec_width -= rec_width * (0.02f * -io.MouseWheel);
-//        zoom_changed = true;
+        auto &io = ImGui::GetIO(); // Pick new zoom from mouse wheel
+
+        if (!io.KeyShift)
+        {
+            if (io.MouseWheel > 0.0f)
+            {
+                rec_width += rec_width * 0.02f * io.MouseWheel;
+                //        zoom_changed = true;
+            }
+            else if (io.MouseWheel < 0.0f)
+            {
+                rec_width -= rec_width * (0.02f * -io.MouseWheel);
+                //        zoom_changed = true;
+            }
+        }
     }
 
-    printf("mouse wheel: %f, rec_width: %f\n", io.MouseWheel, rec_width);
-    auto& records_by_group = RecordsManager::the().records_by_group;
+  //  printf("mouse wheel: %f, rec_width: %f\n", io.MouseWheel, rec_width);
+    auto &records_by_group = RecordsManager::the().records_by_group;
     for (size_t cpu = 0; cpu < records_by_group.size(); cpu++)
     {
         auto &group = records_by_group[cpu];
