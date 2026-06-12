@@ -1,5 +1,4 @@
-#include "ui.hpp"
-
+#include <SDL3/SDL.h>
 #include <algorithm>
 #include <format>
 #include <fstream>
@@ -8,30 +7,29 @@
 #include <imgui_internal.h>
 #include <iostream>
 #include <map>
-#include <string.h>
-#include <unordered_map>
-#include "records.hpp"
-
-#include <SDL3/SDL.h>
 #include <stdio.h>  // printf, fprintf
 #include <stdlib.h> // abort
+#include <string.h>
+#include <unordered_map>
 #include <vector>
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlgpu3.h"
+#include "records.hpp"
+#include "ui.hpp"
 #include "utils.hpp"
 
 int record_ref = -1;
 Record *selected_record = nullptr;
 
- std::hash<std::string> hash_fn;
+std::hash<std::string> hash_fn;
 
 uint64_t try_hash(std::string const &str)
 {
     return hash_fn(str);
 }
 
-Record* get_selected_record()
+Record *get_selected_record()
 {
     return selected_record;
 }
@@ -51,7 +49,6 @@ const char *get_record(void *, int index)
 
     return RecordsManager::the().get_record_by_uid(index)->name.c_str();
 }
-
 
 int ui()
 {
@@ -153,6 +150,7 @@ int ui()
         ImGui::DockSpaceOverViewport();
 
         ImGui::Begin("records list");
+
         {
             //     IMGUI_API bool
             // ListBox(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int height_in_items = -1);
@@ -166,7 +164,6 @@ int ui()
                 nullptr,
                 RecordsManager::the().record_count,
                 -1);
-
 
             if (record_ref != -1)
             {

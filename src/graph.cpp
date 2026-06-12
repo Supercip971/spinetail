@@ -102,7 +102,6 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
                 continue;
             }
 
-            printf("%s tick=%f\n", record->name.c_str(), record->tick);
 
             r2.Min.x = (record->tick) * rec_width;
 
@@ -149,26 +148,6 @@ int display_graph(float &rec_width)
     size_t start_tick = std::max(0.f, ((-cursor.x) / rec_width) - 1);
 
 
-    // check if it is hovered
-    bool hovered = ImGui::IsWindowHovered();
-    if (hovered)
-    {
-        auto &io = ImGui::GetIO(); // Pick new zoom from mouse wheel
-
-        if (!io.KeyShift)
-        {
-            if (io.MouseWheel > 0.0f)
-            {
-                rec_width += rec_width * 0.02f * io.MouseWheel;
-                //        zoom_changed = true;
-            }
-            else if (io.MouseWheel < 0.0f)
-            {
-                rec_width -= rec_width * (0.02f * -io.MouseWheel);
-                //        zoom_changed = true;
-            }
-        }
-    }
 
   //  printf("mouse wheel: %f, rec_width: %f\n", io.MouseWheel, rec_width);
     auto &records_by_group = RecordsManager::the().records_by_group;
@@ -182,6 +161,46 @@ int display_graph(float &rec_width)
         display_tick(group, start_tick, cpu, rec_width, cursor);
     }
     //  draw_list->AddLine(cursor + ImVec2{50, 50}, cursor + ImVec2{1000, 1000}, 0xFFFFFFFF);
+    //
+    // check if it is hovered
+    bool hovered = ImGui::IsWindowHovered();
+    if (hovered)
+    {
+        auto &io = ImGui::GetIO(); // Pick new zoom from mouse wheel
+
+        bool zoom_changed = false;
+        float old_width = rec_width;
+        if (!io.KeyShift)
+        {
+
+            if (io.MouseWheel > 0.0f)
+            {
+
+
+                rec_width += rec_width * 0.02f * io.MouseWheel;
+                zoom_changed = true;
+            }
+            else if (io.MouseWheel < 0.0f)
+            {
+                rec_width -= rec_width * (0.02f * -io.MouseWheel);
+                zoom_changed = true;
+            }
+        }
+        if (zoom_changed)
+        {
+            ImGui::SetNextWindowSize(
+                ImVec2(RecordsManager::the().last_tick() * rec_width, ImGui::GetWindowHeight() - 16.f)
+            );
+
+
+
+           float scroll_x = ImGui::GetScrollX();
+
+           float ratio = ImGui::GetMousePos().x / ImGui::GetWindowWidth();
+            float new_scroll_x = ((scroll_x + ImGui::GetWindowWidth() * ratio) / old_width) * rec_width - ImGui::GetWindowWidth()*ratio;
+            ImGui::SetScrollX(new_scroll_x);
+        }
+    }
     ImGui::EndChild();
     return 0;
 }
