@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <map>
+#include <sstream>
 #include <unordered_map>
 typedef enum
 {
@@ -23,12 +24,24 @@ struct Record
     std::unordered_map<std::string, std::string> values;
 };
 
+
+
+bool record_parser_update_line(Record& record, const std::string& data);
+
 using RecordsSubtick = std::vector<Record *>;
 using RecordsByTicks = std::map<long, RecordsSubtick>;
 using RecordsByGroups = std::map<long, RecordsByTicks>;
 
 struct RecordsManager
 {
+private:
+    RecordsManager() = default;
+public:
+    bool start_reading = false;
+    bool has_record = false;
+    Record building_current_record;
+
+    bool record_parser_update_from_line(std::string const &line, bool defer_sorting = false);
 
     size_t record_count = 0;
     RecordsByGroups records_by_group;
@@ -53,9 +66,11 @@ struct RecordsManager
     static RecordsManager &the();
 
     // WARNING: don't add to all_records directly
-    void add_record(Record &record);
+    void add_record(Record &record, bool defer_sorting = false);
 
     void update_all_records();
+
+    void update_providers();
 
 };
 

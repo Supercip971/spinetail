@@ -1,4 +1,5 @@
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_video.h>
 #include <algorithm>
 #include <format>
 #include <fstream>
@@ -50,11 +51,11 @@ const char *get_record(void *, int index)
     return RecordsManager::the().get_record_by_uid(index)->name.c_str();
 }
 
-int ui()
+SDL_Window *window;
+SDL_GPUDevice *gpu_device;
+int ui_init()
 {
 
-    // Setup SDL
-    // [If using SDL_MAIN_USE_CALLBACKS: all code below until the main loop starts would likely be your SDL_AppInit() function]
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
     {
         printf("Error: SDL_Init(): %s\n", SDL_GetError());
@@ -64,7 +65,7 @@ int ui()
     // Create SDL window graphics context
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    SDL_Window *window = SDL_CreateWindow("Dear ImGui SDL3+SDL_GPU example", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
+    window = SDL_CreateWindow("Dear ImGui SDL3+SDL_GPU example", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
     if (window == nullptr)
     {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
@@ -74,7 +75,7 @@ int ui()
     SDL_ShowWindow(window);
 
     // Create GPU Device
-    SDL_GPUDevice *gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB, true, nullptr);
+    gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB, true, nullptr);
     if (gpu_device == nullptr)
     {
         printf("Error: SDL_CreateGPUDevice(): %s\n", SDL_GetError());
@@ -118,116 +119,124 @@ int ui()
     ImGui_ImplSDLGPU3_Init(&init_info);
 
     // Our state
+    return 0;
+}
+int ui()
+{
 
+    // Setup SDL
+    // [If using SDL_MAIN_USE_CALLBACKS: all code below until the main loop starts would likely be your SDL_AppInit() function]
     // Main loop
     bool done = false;
-
     static float rec_width = 300.f;
-    while (!done)
+    // Poll and handle events (inputs, window resize, etc.)
+    // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+    // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+    // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+    // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+    // [If using SDL_MAIN_USE_CALLBACKS: call ImGui_ImplSDL3_ProcessEvent() from your SDL_AppEvent() function]
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
     {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        // [If using SDL_MAIN_USE_CALLBACKS: call ImGui_ImplSDL3_ProcessEvent() from your SDL_AppEvent() function]
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-            ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT)
-                done = true;
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
-                done = true;
-        }
-
-        // Start the Dear ImGui frame
-        ImGui_ImplSDLGPU3_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-
-        ImGui::NewFrame();
-
-        ImGui::DockSpaceOverViewport();
-
-        ImGui::Begin("records list");
-
-        {
-            //     IMGUI_API bool
-            // ListBox(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int height_in_items = -1);
-
-            ImGui::SliderFloat("record width", &rec_width, 100.f, 500.f);
-
-            ImGui::ListBox(
-                "##records",
-                &record_ref,
-                get_record,
-                nullptr,
-                RecordsManager::the().record_count,
-                -1);
-
-            if (record_ref != -1)
-            {
-                selected_record = RecordsManager::the().get_record_by_uid(record_ref);
-            }
-            if (selected_record != nullptr)
-            {
-                ImGui::Text("Name: %s", selected_record->name.c_str());
-                ImGui::Text("Tick: %f", selected_record->tick);
-                ImGui::Text("Group: %ld", selected_record->group);
-
-                for (auto &[key, value] : selected_record->values)
-                {
-                    ImGui::Text("%s: %s", key.c_str(), value.c_str());
-                }
-            }
-        }
-        ImGui::End();
-
-        ImGui::Begin("graph");
-        {
-            display_graph(rec_width);
-        }
-        ImGui::End();
-
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-
-        // 3. Show another simple window.
-
-        // Rendering
-        ImGui::Render();
-        ImDrawData *draw_data = ImGui::GetDrawData();
-        const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
-
-        SDL_GPUCommandBuffer *command_buffer = SDL_AcquireGPUCommandBuffer(gpu_device); // Acquire a GPU command buffer
-
-        SDL_GPUTexture *swapchain_texture;
-        SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer, window, &swapchain_texture, nullptr, nullptr); // Acquire a swapchain texture
-
-        if (swapchain_texture != nullptr && !is_minimized)
-        {
-            // This is mandatory: call ImGui_ImplSDLGPU3_PrepareDrawData() to upload the vertex/index buffer!
-            ImGui_ImplSDLGPU3_PrepareDrawData(draw_data, command_buffer);
-
-            // Setup and start a render pass
-            SDL_GPUColorTargetInfo target_info = {};
-            target_info.texture = swapchain_texture;
-            target_info.clear_color = SDL_FColor{0, 0, 0, 1};
-            target_info.load_op = SDL_GPU_LOADOP_CLEAR;
-            target_info.store_op = SDL_GPU_STOREOP_STORE;
-            target_info.mip_level = 0;
-            target_info.layer_or_depth_plane = 0;
-            target_info.cycle = false;
-            SDL_GPURenderPass *render_pass = SDL_BeginGPURenderPass(command_buffer, &target_info, 1, nullptr);
-
-            // Render ImGui
-            ImGui_ImplSDLGPU3_RenderDrawData(draw_data, command_buffer, render_pass);
-
-            SDL_EndGPURenderPass(render_pass);
-        }
-
-        // Submit the command buffer
-        SDL_SubmitGPUCommandBuffer(command_buffer);
+        ImGui_ImplSDL3_ProcessEvent(&event);
+        if (event.type == SDL_EVENT_QUIT)
+            done = true;
+        if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
+            done = true;
     }
+
+    // Start the Dear ImGui frame
+    ImGui_ImplSDLGPU3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+
+    ImGui::NewFrame();
+
+    ImGui::DockSpaceOverViewport();
+
+    ImGui::Begin("records list");
+
+    {
+        //     IMGUI_API bool
+        // ListBox(const char* label, int* current_item, const char* (*getter)(void* user_data, int idx), void* user_data, int items_count, int height_in_items = -1);
+
+        ImGui::SliderFloat("record width", &rec_width, 100.f, 500.f);
+
+        ImGui::ListBox(
+            "##records",
+            &record_ref,
+            get_record,
+            nullptr,
+            RecordsManager::the().record_count,
+            -1);
+
+        if (record_ref != -1)
+        {
+            selected_record = RecordsManager::the().get_record_by_uid(record_ref);
+        }
+        if (selected_record != nullptr)
+        {
+            ImGui::Text("Name: %s", selected_record->name.c_str());
+            ImGui::Text("Tick: %f", selected_record->tick);
+            ImGui::Text("Group: %ld", selected_record->group);
+
+            for (auto &[key, value] : selected_record->values)
+            {
+                ImGui::Text("%s: %s", key.c_str(), value.c_str());
+            }
+        }
+    }
+    ImGui::End();
+
+    ImGui::Begin("graph");
+    {
+        display_graph(rec_width);
+    }
+    ImGui::End();
+
+    // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+
+    // 3. Show another simple window.
+
+    // Rendering
+    ImGui::Render();
+    ImDrawData *draw_data = ImGui::GetDrawData();
+    const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
+
+    SDL_GPUCommandBuffer *command_buffer = SDL_AcquireGPUCommandBuffer(gpu_device); // Acquire a GPU command buffer
+
+    SDL_GPUTexture *swapchain_texture;
+    SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer, window, &swapchain_texture, nullptr, nullptr); // Acquire a swapchain texture
+
+    if (swapchain_texture != nullptr && !is_minimized)
+    {
+        // This is mandatory: call ImGui_ImplSDLGPU3_PrepareDrawData() to upload the vertex/index buffer!
+        ImGui_ImplSDLGPU3_PrepareDrawData(draw_data, command_buffer);
+
+        // Setup and start a render pass
+        SDL_GPUColorTargetInfo target_info = {};
+        target_info.texture = swapchain_texture;
+        target_info.clear_color = SDL_FColor{0, 0, 0, 1};
+        target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+        target_info.store_op = SDL_GPU_STOREOP_STORE;
+        target_info.mip_level = 0;
+        target_info.layer_or_depth_plane = 0;
+        target_info.cycle = false;
+        SDL_GPURenderPass *render_pass = SDL_BeginGPURenderPass(command_buffer, &target_info, 1, nullptr);
+
+        // Render ImGui
+        ImGui_ImplSDLGPU3_RenderDrawData(draw_data, command_buffer, render_pass);
+
+        SDL_EndGPURenderPass(render_pass);
+    }
+
+    // Submit the command buffer
+    SDL_SubmitGPUCommandBuffer(command_buffer);
+
+    return done;
+}
+
+void ui_deinit()
+{
 
     // Cleanup
     // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppQuit() function]
@@ -240,6 +249,4 @@ int ui()
     SDL_DestroyGPUDevice(gpu_device);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
-    return 0;
 }

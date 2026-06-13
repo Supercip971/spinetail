@@ -2,9 +2,9 @@ MKCWD=mkdir -p $(@D)
 
 CXX ?= clang++
 
-SANITIZERS =
-#	-fsanitize=address 	\
-#	-fsanitize=undefined
+SANITIZERS =\
+	-fsanitize=address 	\
+	-fsanitize=undefined
 
 
 CFLAGS_WARNS ?= 	\
@@ -16,7 +16,7 @@ CFLAGS_WARNS ?= 	\
 		-Wvla
 
 CXXFLAGS = 			\
-		-O2 		\
+		-Og 		\
 		-g 		 	\
 		-std=c++2b 	\
 		-Isrc/      \
@@ -65,7 +65,7 @@ $(BUILD_DIR)/%.o: %.cpp
 	@$(CXX) $(CXXFLAGS) -MMD -MP $< -c -o $@
 
 run: $(OUTPUT)
-	@$(OUTPUT) open ./tests/test2.tail
+	@$(OUTPUT) watch ./tests/test.tail
 
 all: $(OUTPUT)
 

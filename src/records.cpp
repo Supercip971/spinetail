@@ -1,14 +1,16 @@
 
 #include "records.hpp"
+#include <algorithm>
+#include <sstream>
 #include "utils.hpp"
 
 RecordsManager &RecordsManager::the()
 {
-    static RecordsManager instance;
+    static RecordsManager instance = RecordsManager();
     return instance;
 }
 
-void RecordsManager::add_record(Record &record)
+void RecordsManager::add_record(Record &record, bool defer_sorting)
 {
     if (!records_by_group.contains(record.group))
     {
@@ -32,6 +34,19 @@ void RecordsManager::add_record(Record &record)
         records_by_group[record.group][record.tick] = RecordsSubtick({r});
     }
     record_count++;
+
+    if (!defer_sorting)
+    {
+        all_records.insert(
+            std::upper_bound(all_records.begin(), all_records.end(), r, [](Record *a, Record *b)
+                             {
+                if (a->tick != b->tick)
+                {
+                    return a->tick < b->tick;
+                }
+                return a->group < b->group; }),
+            r);
+    }
 }
 
 void RecordsManager::update_all_records()
@@ -54,6 +69,76 @@ void RecordsManager::update_all_records()
             return a->tick < b->tick;
         }
         return a->group < b->group; });
+}
+
+bool RecordsManager::record_parser_update_from_line(std::string const &line, bool defer_sorting)
+{
+    if (line.length() == 0)
+        return true;
+    if (!start_reading && line.contains("@st:begin"))
+    {
+        start_reading = true;
+        return true;
+    }
+    else if (line.contains("@st:sched"))
+    {
+        if (has_record)
+        {
+            printf("== adding record = %s\n", building_current_record.name.c_str());
+            this->add_record(building_current_record, defer_sorting);
+            building_current_record = {};
+        }
+
+        building_current_record.type = RECORD_TYPE_SCHEDULER;
+        has_record = true;
+        return true;
+    }
+    else if (line.contains("@st:event"))
+    {
+        printf("⁼== adding record = %s\n", building_current_record.name.c_str());
+        if (has_record)
+        {
+            this->add_record(building_current_record, defer_sorting);
+            building_current_record = {};
+        }
+
+        building_current_record.type = RECORD_TYPE_EVENT;
+        has_record = true;
+        return true;
+    }
+    else if (line[0] == '#')
+    {
+
+        if (line.starts_with("#name"))
+        {
+            building_current_record.name = line.substr(strlen("#name "));
+            return true;
+        }
+        if (line.starts_with("#group"))
+        {
+            building_current_record.group = std::stol(line.substr(strlen("#group ")));
+            return true;
+        }
+        if (line.starts_with("#tick"))
+        {
+            building_current_record.tick = std::stof(line.substr(strlen("#tick ")));
+            return true;
+        }
+        if (line.starts_with("#"))
+        {
+            return true;
+        }
+    }
+    else
+    {
+        // first word is key, the next until the end of theline are avlues
+        auto end_first_word = line.find(' ');
+        std::string key = line.substr(0, end_first_word);
+        std::string value = line.substr(end_first_word + 1);
+        building_current_record.values[key] = value;
+    }
+
+    return true;
 }
 
 void parse_records_from_file(const std::string &filename)

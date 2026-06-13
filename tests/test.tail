@@ -6,26 +6,26 @@
 #tick 0
 #group 1
 @st:sched
-#name gui-demo
-#kind scheduler
-#pid 10
-#tick 0
-#group 0
-@st:sched
-#name disk
+#name kernel2
 #kind scheduler
 #pid 10
 #tick 1
-#group 0
+#group 1
 @st:sched
-#name render
+#name kernel3
 #kind scheduler
 #pid 10
 #tick 2
-#group 0
+#group 1
 @st:sched
-#name vfs
+#name kernel4
 #kind scheduler
 #pid 10
-#tick 2
+#tick 3
+#group 1
+@st:sched
+#name kernel5
+#kind scheduler
+#pid 10
+#tick 10
 #group 1

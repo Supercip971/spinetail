@@ -4,6 +4,9 @@
 #include <string>
 #include "records.hpp"
 int ui();
+int ui_init();
+void ui_deinit();
+
 Record*  get_selected_record();
 
 void set_selected_record(Record* record);
