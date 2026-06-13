@@ -1,10 +1,10 @@
 MKCWD=mkdir -p $(@D)
 
-CXX ?= g++
+CXX ?= clang++
 
-SANITIZERS = 			\
-	-fsanitize=address 	\
-	-fsanitize=undefined
+SANITIZERS =
+#	-fsanitize=address 	\
+#	-fsanitize=undefined
 
 
 CFLAGS_WARNS ?= 	\
@@ -20,6 +20,7 @@ CXXFLAGS = 			\
 		-g 		 	\
 		-std=c++2b 	\
 		-Isrc/      \
+		-Iexternal/ \
 		-DIMGUI_DEFINE_MATH_OPERATORS=1\
 		-Iexternal/imgui \
 		-Iexternal/imgui/backends \
@@ -64,7 +65,7 @@ $(BUILD_DIR)/%.o: %.cpp
 	@$(CXX) $(CXXFLAGS) -MMD -MP $< -c -o $@
 
 run: $(OUTPUT)
-	@$(OUTPUT) ./tests/test2.tail
+	@$(OUTPUT) open ./tests/test2.tail
 
 all: $(OUTPUT)
 
