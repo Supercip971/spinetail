@@ -8,24 +8,30 @@
 @st:sched
 #name kernel2
 #kind scheduler
-#pid 10
+#pid 11
 #tick 1
 #group 1
 @st:sched
 #name kernel3
 #kind scheduler
-#pid 10
+#pid 12
 #tick 2
 #group 1
 @st:sched
 #name kernel4
 #kind scheduler
-#pid 10
+#pid 13
 #tick 3
 #group 1
 @st:sched
 #name kernel5
 #kind scheduler
-#pid 10
+#pid 14
 #tick 10
+#group 1
+@st:sched
+#name kernel5
+#kind scheduler
+#pid 14
+#tick 11
 #group 1

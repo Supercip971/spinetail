@@ -10,8 +10,6 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
     Record *last_record = nullptr;
     ImRect r = {};
     r.Min.y = 0.f + 200.f * cpu;
-    r.Min.x = rec_width * start_tick;
-    r.Max.x = r.Min.x;
     r.Max.y = 100.f + 200.f * cpu;
 
     Record *selected_record = get_selected_record();
@@ -23,25 +21,36 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
     {
         if (!group.contains(tick))
         {
-            r.Max.x += rec_width;
+
             continue;
         }
+
+        r.Min.x = rec_width * tick;
+        r.Max.x = r.Min.x;
 
         draw_list->ChannelsSetCurrent(0);
         auto r2 = r;
         auto records = group[tick];
-        for (auto record : records)
+
+        // == sched ==
+        // each time we draw last record, because it is the last record of the tick
+        for (size_t r_it = 0; r_it < records.size(); r_it++)
         {
+
+            auto record = records[r_it];
             if (record->type == RECORD_TYPE_EVENT)
             {
                 continue;
             }
-            r.Max.x = record->tick * rec_width;
 
             if (last_record == nullptr)
             {
                 last_record = record;
+                continue;
             }
+
+            r.Min.x = last_record->tick * rec_width;
+            r.Max.x = record->tick * rec_width;
 
             ImColor col = try_hash(last_record->name);
 
@@ -83,25 +92,17 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
                     rec_width);
             }
             last_record = record;
-            r.Min.x = r.Max.x;
         }
-
-        draw_list->AddRectFilled(r.Min + cursor, r.Max + cursor, try_hash(last_record->name.c_str()) | 0xff000000);
-        draw_list->AddText(
-            ImGui::GetFont(),
-            ImGui::GetFontSize(),
-            r.Min + cursor + ImVec2{2, 2}, 0xFFFFFFFF, last_record->name.c_str(), nullptr,
-            rec_width);
 
         draw_list->ChannelsSetCurrent(1);
 
+        // == drawings events ==
         for (auto record : records)
         {
             if (record->type != RECORD_TYPE_EVENT)
             {
                 continue;
             }
-
 
             r2.Min.x = (record->tick) * rec_width;
 
@@ -128,6 +129,18 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
                 rec_width);
         }
     }
+    if (last_record != nullptr)
+    {
+
+        r.Min.x = r.Max.x;
+        r.Max.x += rec_width;
+        draw_list->AddRectFilled(r.Min + cursor, r.Max + cursor, try_hash(last_record->name.c_str()) | 0xff000000);
+        draw_list->AddText(
+            ImGui::GetFont(),
+            ImGui::GetFontSize(),
+            r.Min + cursor + ImVec2{2, 2}, 0xFFFFFFFF, last_record->name.c_str(), nullptr,
+            rec_width);
+    }
 
     draw_list->ChannelsMerge();
 
@@ -147,9 +160,7 @@ int display_graph(float &rec_width)
         ImRect(0, 0, width, ImGui::GetWindowHeight() - 16.f));
     size_t start_tick = std::max(0.f, ((-cursor.x) / rec_width) - 1);
 
-
-
-  //  printf("mouse wheel: %f, rec_width: %f\n", io.MouseWheel, rec_width);
+    //  printf("mouse wheel: %f, rec_width: %f\n", io.MouseWheel, rec_width);
     auto &records_by_group = RecordsManager::the().records_by_group;
     for (size_t cpu = 0; cpu < records_by_group.size(); cpu++)
     {
@@ -176,7 +187,6 @@ int display_graph(float &rec_width)
             if (io.MouseWheel > 0.0f)
             {
 
-
                 rec_width += rec_width * 0.02f * io.MouseWheel;
                 zoom_changed = true;
             }
@@ -189,15 +199,12 @@ int display_graph(float &rec_width)
         if (zoom_changed)
         {
             ImGui::SetNextWindowSize(
-                ImVec2(RecordsManager::the().last_tick() * rec_width, ImGui::GetWindowHeight() - 16.f)
-            );
+                ImVec2(RecordsManager::the().last_tick() * rec_width, ImGui::GetWindowHeight() - 16.f));
 
+            float scroll_x = ImGui::GetScrollX();
 
-
-           float scroll_x = ImGui::GetScrollX();
-
-           float ratio = ImGui::GetMousePos().x / ImGui::GetWindowWidth();
-            float new_scroll_x = ((scroll_x + ImGui::GetWindowWidth() * ratio) / old_width) * rec_width - ImGui::GetWindowWidth()*ratio;
+            float ratio = ImGui::GetMousePos().x / ImGui::GetWindowWidth();
+            float new_scroll_x = ((scroll_x + ImGui::GetWindowWidth() * ratio) / old_width) * rec_width - ImGui::GetWindowWidth() * ratio;
             ImGui::SetScrollX(new_scroll_x);
         }
     }

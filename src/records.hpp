@@ -49,14 +49,20 @@ public:
 
     long last_tick()
     {
+
+        if(all_records.size() <= 0)
+            return 0;
         long width = 0;
         for (size_t cpu = 0; cpu < records_by_group.size(); cpu++)
         {
             width = std::max<long>(width, static_cast<long>(records_by_group[cpu].size()));
-            width = std::max<long>(width, static_cast<long>(records_by_group[cpu].end()->first));
+
+
+
 
         }
-        return width;
+
+        return std::max<long>(width, all_records[all_records.size()-1]->tick) + 1.f;
     }
 
     Record* get_record_by_uid(size_t uid)

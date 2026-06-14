@@ -27,22 +27,30 @@ std::optional<std::string> FileWatcherProvider::get_data()
 
         printf("seek to: %ld\n", (long)_last_seek);
 
+        _file.seekg(0, std::ios::end);
+        auto end = _file.tellg();
+
         _file.seekg(_last_seek, std::ios::beg);
         std::string line = "";
         std::string data = "";
-        while (std::getline(_file, line))
+
+        while(_file.tellg() < end)
         {
-            data += line + "\n";
-            break;
+            auto c = _file.get();
+            line += c;
+            if(c == '\n')
+            {
+                data += line;
+                line = "";
+                _last_seek = _file.tellg(); // save seek position of the last successful read line
+            }
         }
 
         printf("read %ld bytes\n", (long)data.length());
 
-        if(_file.tellg() == -1){
+        if(_file.tellg() == -1){ // end reached before newline
             _file.clear();
             _file.seekg(0, std::ios::end);
-        } else {
-            _last_seek = _file.tellg();
         }
         _last_edit = t;
 
