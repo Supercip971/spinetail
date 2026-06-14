@@ -9,8 +9,8 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
 
     Record *last_record = nullptr;
     ImRect r = {};
-    r.Min.y = 0.f + 200.f * cpu;
-    r.Max.y = 100.f + 200.f * cpu;
+    r.Min.y = 32.f + 200.f * cpu;
+    r.Max.y = 32.f + 100.f + 200.f * cpu;
 
     Record *selected_record = get_selected_record();
     draw_list->ChannelsSplit(2);
@@ -38,7 +38,7 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
         {
 
             auto record = records[r_it];
-            if (record->type == RECORD_TYPE_EVENT)
+            if (record->type != RECORD_TYPE_SCHEDULER)
             {
                 continue;
             }
@@ -128,6 +128,62 @@ int display_tick(RecordsByTicks &group, size_t start_tick, long cpu, float rec_w
                 r2.Min + cursor + ImVec2{0, -ImGui::GetFontSize()}, 0xFFFFFFFF, record->name.c_str(), nullptr,
                 rec_width);
         }
+        // span events
+        std::vector<Record *> running_span_events = {};
+        size_t depth = 0;
+        for (auto record : records)
+        {
+            if (record->type != RECORD_TYPE_SPANEVENT)
+            {
+                continue;
+            }
+            if (record->is_begin)
+            {
+                //printf("=== begin %p '%s'\n", record, record->name.c_str());
+                running_span_events.push_back(record);
+                depth++;
+            }
+            else
+            {
+                //printf("=== end %p '%s'\n", record, record->name.c_str());
+                // compare by name
+                int it = -1;
+                for (size_t i = 0; i < running_span_events.size(); i++)
+                {
+                    if (running_span_events[i]->name == record->name)
+                    {
+                //        printf("event mismatch: '%s' vs '%s'\n", running_span_events[i]->name.c_str(), record->name.c_str());
+                        it = i;
+                        break;
+                    }
+                }
+                if (it != -1)
+                {
+                    r2.Min.x = (running_span_events[it]->tick) * rec_width;
+
+                    r2.Max.x = (record->tick) * rec_width;
+                    r2.Min.y = 32.f + 100.f + 200.f * cpu + 16.f * (depth);
+                    r2.Max.y = 32.f + 100.f + 200.f * cpu + 16.f * (depth+1);
+
+                    ImColor col = try_hash(record->name);
+                    col.Value.w = 1.f;
+
+                   draw_list->AddRectFilled(r2.Min + cursor, r2.Max + cursor,
+                                             col);
+                   draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize(), r2.Min + cursor,
+                       0xffffffff,
+                       record->name.c_str());
+
+                    running_span_events.erase(running_span_events.begin() + it);
+                    depth--;
+                }
+                else
+                {
+
+                    printf("Closing an event that never started: %s\n", record->name.c_str());
+                }
+            }
+        }
     }
     if (last_record != nullptr)
     {
@@ -162,6 +218,29 @@ int display_graph(float &rec_width)
 
     //  printf("mouse wheel: %f, rec_width: %f\n", io.MouseWheel, rec_width);
     auto &records_by_group = RecordsManager::the().records_by_group;
+
+    float window_width = ImGui::GetWindowWidth();
+    size_t end = ceilf(window_width / rec_width) + 5;
+    auto draw_list = ImGui::GetWindowDrawList();
+    for (size_t t0 = start_tick; t0 < start_tick + end; t0++)
+    {
+        draw_list->AddLine(cursor + ImVec2{t0 * rec_width, 0}, cursor + ImVec2{t0 * rec_width, ImGui::GetWindowHeight() - 16.f}, 0xaaaaaaaa);
+
+        std::string text = " ";
+        if (end > 15)
+        {
+            text = std::to_string(t0);
+        }
+        else
+        {
+
+            text = "tick " + std::to_string(t0);
+        }
+        draw_list->AddText(
+            ImGui::GetFont(),
+            ImGui::GetFontSize(),
+            cursor + ImVec2{t0 * rec_width, 0}, 0xaaaaaaaa, text.c_str());
+    }
     for (size_t cpu = 0; cpu < records_by_group.size(); cpu++)
     {
         auto &group = records_by_group[cpu];

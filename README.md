@@ -24,6 +24,15 @@ It fixes the issues of looking at raw event data splitted across multiple thread
 
 ![demo-pic](meta/demo.png)
 
+## How to start 
+
+```sh
+$ spinetail open <path_to_log_file>
+$ spinetail watch <path_to_log_file>
+$ spinetail connect <tcp_ip_address>
+```
+
+
 ## But doesn't it trash my log ?
 
 You can use `spinetail` to visualize your log while keeping it intact by using 2 different COM port in QEMU.

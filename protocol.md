@@ -24,6 +24,15 @@ You can then create an event, each event starts with
 @st:event 
 ```
 
+An event can be a `begin` or `end` event. 
+
+- `begin` events are used to indicate the start of a span.
+- `end` events are used to indicate the end of a span.
+
+Note that you don't need to consider scheduling without a `end`, the system manages scheduling event duration automatically. And will wrap for the next scheduler event.
+
+
+
 You can then create attribute for each line: 
 
 ```
